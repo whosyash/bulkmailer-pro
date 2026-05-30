@@ -4,21 +4,22 @@ import { Toaster } from 'react-hot-toast';
 import toast from 'react-hot-toast';
 import {
   HomeIcon, PaperAirplaneIcon, DocumentTextIcon, Cog6ToothIcon,
-  EnvelopeIcon, Bars3Icon, XMarkIcon, LockClosedIcon, CheckCircleIcon
+  EnvelopeIcon, Bars3Icon, XMarkIcon, LockClosedIcon
 } from '@heroicons/react/24/outline';
 
 import Dashboard from './pages/Dashboard';
 import Compose from './pages/Compose';
 import Templates from './pages/Templates';
 import Settings from './pages/Settings';
+import Admin from './pages/Admin';
 import SenderConfig from './components/SenderConfig';
-import { checkAuth, login, getConfig } from './services/api';
+import { checkAuth, login, logout, getRole, getConfig } from './services/api';
 
 const DISCLAIMER_KEY = 'bmp_disclaimer_accepted';
 
-// ─── Password gate ─────────────────────────────────────────────────────────────
-function PasswordGate({ onUnlocked }) {
-  const [password, setPassword] = useState('');
+// ─── Login gate ────────────────────────────────────────────────────────────────
+function LoginGate({ onLogin }) {
+  const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -27,11 +28,14 @@ function PasswordGate({ onUnlocked }) {
     setError('');
     setLoading(true);
     try {
-      const res = await login(password);
-      if (res.success) onUnlocked();
-      else setError('Incorrect password.');
-    } catch {
-      setError('Incorrect password.');
+      const res = await login(code.trim());
+      if (res.success) {
+        onLogin(res.role);
+      } else {
+        setError(res.message || 'Invalid code.');
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Invalid access code. Contact the administrator.');
     }
     setLoading(false);
   }
@@ -44,76 +48,80 @@ function PasswordGate({ onUnlocked }) {
             <LockClosedIcon className="h-8 w-8 text-blue-500" />
           </div>
           <h1 className="text-xl font-bold text-gray-900">BulkMailer Pro</h1>
-          <p className="text-sm text-gray-500 mt-1">Enter the access password to continue</p>
+          <p className="text-sm text-gray-500 mt-1 text-center">
+            Enter your access code to continue
+          </p>
         </div>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
-            type="password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            placeholder="Access password"
-            className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            type="text"
+            value={code}
+            onChange={e => setCode(e.target.value.toUpperCase())}
+            placeholder="XXXX-XXXX-XXXX"
+            className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm font-mono tracking-widest text-center focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase"
             autoFocus
+            autoComplete="off"
           />
-          {error && <p className="text-red-500 text-sm">{error}</p>}
+          {error && (
+            <p className="text-red-500 text-sm text-center bg-red-50 rounded-lg py-2 px-3">{error}</p>
+          )}
           <button
             type="submit"
-            disabled={loading || !password}
+            disabled={loading || !code.trim()}
             className="w-full bg-blue-500 text-white font-semibold py-3 rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors"
           >
-            {loading ? 'Checking…' : 'Unlock'}
+            {loading ? 'Verifying…' : 'Enter'}
           </button>
         </form>
+
+        <p className="text-center text-xs text-gray-400 mt-5">
+          Don't have an access code?<br />
+          Contact the administrator to get one.
+        </p>
       </div>
     </div>
   );
 }
 
-// ─── Mandatory email setup screen ─────────────────────────────────────────────
+// ─── First-time email setup ────────────────────────────────────────────────────
 function SetupRequired({ onConfigured }) {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-lg">
-        {/* Header */}
         <div className="text-center mb-6">
           <div className="flex items-center justify-center gap-2 mb-2">
             <EnvelopeIcon className="h-7 w-7 text-blue-500" />
             <span className="text-2xl font-bold text-gray-900">BulkMailer Pro</span>
           </div>
-          <p className="text-gray-500 text-sm">One-time setup required before you can send emails</p>
+          <p className="text-gray-500 text-sm">Connect your email account to get started</p>
         </div>
 
-        {/* Steps overview */}
         <div className="flex items-center justify-center gap-4 mb-6 text-xs text-gray-500">
-          <div className="flex items-center gap-1.5">
-            <div className="w-5 h-5 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">1</div>
-            <span className="font-medium text-blue-600">Set up email</span>
-          </div>
-          <div className="h-px w-8 bg-gray-300" />
-          <div className="flex items-center gap-1.5">
-            <div className="w-5 h-5 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center text-xs font-bold">2</div>
-            <span>Create templates</span>
-          </div>
-          <div className="h-px w-8 bg-gray-300" />
-          <div className="flex items-center gap-1.5">
-            <div className="w-5 h-5 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center text-xs font-bold">3</div>
-            <span>Send emails</span>
-          </div>
+          {[
+            { n: 1, label: 'Set up email', active: true },
+            { n: 2, label: 'Create templates', active: false },
+            { n: 3, label: 'Send emails', active: false }
+          ].map(({ n, label, active }, i, arr) => (
+            <React.Fragment key={n}>
+              <div className="flex items-center gap-1.5">
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${active ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-400'}`}>{n}</div>
+                <span className={active ? 'font-medium text-blue-600' : ''}>{label}</span>
+              </div>
+              {i < arr.length - 1 && <div className="h-px w-6 bg-gray-300" />}
+            </React.Fragment>
+          ))}
         </div>
 
-        {/* Config card */}
         <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
           <h2 className="font-semibold text-gray-800 mb-1">Connect Your Email Account</h2>
-          <p className="text-sm text-gray-500 mb-5">
-            Enter your own Gmail (or other SMTP) credentials. This app never uses a shared or default email —
-            every email you send will come from your own account.
+          <p className="text-sm text-gray-500 mb-4">
+            Emails are sent from <strong>your own account only</strong>. No shared or default email is used.
           </p>
-
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-5 text-xs text-amber-700">
-            <strong>Gmail users:</strong> You must use an <strong>App Password</strong>, not your regular Gmail password.
-            Enable 2-Step Verification first, then generate an App Password at myaccount.google.com → Security → App Passwords.
+            <strong>Gmail:</strong> Use an <strong>App Password</strong> — not your regular password.
+            Go to myaccount.google.com → Security → App Passwords to generate one.
           </div>
-
           <SenderConfig initialConfig={{}} onSaved={onConfigured} />
         </div>
       </div>
@@ -125,29 +133,25 @@ function SetupRequired({ onConfigured }) {
 function DisclaimerModal({ onAccept }) {
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 sm:p-8">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6">
         <div className="flex items-center gap-3 mb-4">
           <EnvelopeIcon className="h-7 w-7 text-blue-500" />
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">BulkMailer Pro</h2>
+          <h2 className="text-xl font-bold text-gray-900">BulkMailer Pro</h2>
         </div>
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-5">
           <p className="text-sm text-amber-800 leading-relaxed">
-            <strong>Important Notice:</strong> BulkMailer Pro is for legitimate outreach only.
+            <strong>Important:</strong> This tool is for legitimate outreach only.
             Sending unsolicited emails may violate <strong>CAN-SPAM</strong>, <strong>GDPR</strong>, and your
-            provider's Terms of Service. Exceeding daily limits may result in <strong>account suspension</strong>.
-            Use responsibly.
+            provider's Terms of Service. Daily limits are enforced to protect your account.
           </p>
         </div>
         <ul className="text-sm text-gray-600 space-y-1 mb-5">
-          <li>✅ Emails are sent from YOUR own account only</li>
-          <li>✅ Gmail App Passwords — not your regular password</li>
+          <li>✅ Emails are sent from your own account only</li>
+          <li>✅ Use Gmail App Passwords — not your regular password</li>
           <li>✅ Automated rate limiting protects your account</li>
           <li>❌ Spam or unsolicited bulk email is prohibited</li>
         </ul>
-        <button
-          onClick={onAccept}
-          className="w-full bg-blue-500 text-white font-semibold py-3 rounded-lg hover:bg-blue-600 transition-colors text-sm"
-        >
+        <button onClick={onAccept} className="w-full bg-blue-500 text-white font-semibold py-3 rounded-lg hover:bg-blue-600 transition-colors text-sm">
           I Understand — Continue
         </button>
       </div>
@@ -155,7 +159,7 @@ function DisclaimerModal({ onAccept }) {
   );
 }
 
-// ─── Sidebar ───────────────────────────────────────────────────────────────────
+// ─── Sidebar + nav ─────────────────────────────────────────────────────────────
 const navItems = [
   { to: '/', label: 'Dashboard', Icon: HomeIcon, exact: true },
   { to: '/compose', label: 'Compose', Icon: PaperAirplaneIcon },
@@ -167,11 +171,7 @@ function Sidebar({ open, onClose }) {
   return (
     <>
       {open && <div className="fixed inset-0 bg-black/50 z-30 md:hidden" onClick={onClose} />}
-      <aside className={`
-        fixed left-0 top-0 bottom-0 z-40 w-64 bg-[#1e293b] flex flex-col
-        transition-transform duration-300 ease-in-out
-        ${open ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0
-      `}>
+      <aside className={`fixed left-0 top-0 bottom-0 z-40 w-64 bg-[#1e293b] flex flex-col transition-transform duration-300 ${open ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
         <div className="p-5 border-b border-slate-700 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <EnvelopeIcon className="h-6 w-6 text-blue-400" />
@@ -183,17 +183,11 @@ function Sidebar({ open, onClose }) {
         </div>
         <nav className="flex-1 py-4 px-3">
           {navItems.map(({ to, label, Icon, exact }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={exact}
-              onClick={onClose}
+            <NavLink key={to} to={to} end={exact} onClick={onClose}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 text-sm font-medium transition-colors ${
                   isActive ? 'bg-blue-500 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'
-                }`
-              }
-            >
+                }`}>
               <Icon className="h-5 w-5 flex-shrink-0" />
               {label}
             </NavLink>
@@ -223,16 +217,9 @@ function MobileBottomNav() {
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-gray-200 flex">
       {navItems.map(({ to, label, Icon, exact }) => (
-        <NavLink
-          key={to}
-          to={to}
-          end={exact}
+        <NavLink key={to} to={to} end={exact}
           className={({ isActive }) =>
-            `flex-1 flex flex-col items-center py-2 text-xs font-medium transition-colors ${
-              isActive ? 'text-blue-500' : 'text-gray-400 hover:text-gray-600'
-            }`
-          }
-        >
+            `flex-1 flex flex-col items-center py-2 text-xs font-medium ${isActive ? 'text-blue-500' : 'text-gray-400'}`}>
           <Icon className="h-5 w-5 mb-0.5" />
           {label}
         </NavLink>
@@ -241,18 +228,14 @@ function MobileBottomNav() {
   );
 }
 
-// ─── Main app shell ────────────────────────────────────────────────────────────
-function AppShell({ onSignOut }) {
+function AppShell({ onSetupNeeded }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showDisclaimer, setShowDisclaimer] = useState(!localStorage.getItem(DISCLAIMER_KEY));
 
   return (
     <>
       {showDisclaimer && (
-        <DisclaimerModal onAccept={() => {
-          localStorage.setItem(DISCLAIMER_KEY, 'true');
-          setShowDisclaimer(false);
-        }} />
+        <DisclaimerModal onAccept={() => { localStorage.setItem(DISCLAIMER_KEY, 'true'); setShowDisclaimer(false); }} />
       )}
       <div className="flex min-h-screen bg-gray-50">
         <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
@@ -264,7 +247,7 @@ function AppShell({ onSignOut }) {
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/compose" element={<Compose />} />
                 <Route path="/templates" element={<Templates />} />
-                <Route path="/settings" element={<Settings onConfigCleared={onSignOut} />} />
+                <Route path="/settings" element={<Settings onConfigCleared={onSetupNeeded} />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </div>
@@ -277,31 +260,31 @@ function AppShell({ onSignOut }) {
 }
 
 // ─── Root ──────────────────────────────────────────────────────────────────────
+// Stages: 'checking' → 'login' → 'setup' → 'app' | 'admin'
 export default function App() {
-  // 'checking' | 'locked' | 'setup' | 'ready'
   const [stage, setStage] = useState('checking');
 
   async function checkStage() {
     try {
-      // 1. Check password gate
       const auth = await checkAuth();
-      if (auth.passwordRequired && !auth.authenticated) {
-        setStage('locked');
-        return;
-      }
-      // 2. Check if email has been configured
+      if (!auth.authenticated) { setStage('login'); return; }
+
+      if (auth.role === 'admin') { setStage('admin'); return; }
+
+      // Client — check if email is configured
       const cfg = await getConfig();
-      if (!cfg.data?.email) {
-        setStage('setup');
-      } else {
-        setStage('ready');
-      }
+      setStage(cfg.data?.email ? 'app' : 'setup');
     } catch {
-      setStage('setup'); // default to setup if API unreachable
+      setStage('login');
     }
   }
 
   useEffect(() => { checkStage(); }, []);
+
+  async function handleLogout() {
+    await logout();
+    setStage('login');
+  }
 
   if (stage === 'checking') {
     return (
@@ -311,10 +294,22 @@ export default function App() {
     );
   }
 
-  if (stage === 'locked') {
+  if (stage === 'login') {
     return (
       <>
-        <PasswordGate onUnlocked={checkStage} />
+        <LoginGate onLogin={(role) => {
+          if (role === 'admin') setStage('admin');
+          else checkStage(); // will move to 'setup' or 'app'
+        }} />
+        <Toaster position="top-center" toastOptions={{ duration: 4000 }} />
+      </>
+    );
+  }
+
+  if (stage === 'admin') {
+    return (
+      <>
+        <Admin onLogout={handleLogout} />
         <Toaster position="top-center" toastOptions={{ duration: 4000 }} />
       </>
     );
@@ -325,7 +320,7 @@ export default function App() {
       <>
         <SetupRequired onConfigured={() => {
           toast.success('Email configured! Welcome to BulkMailer Pro.');
-          setStage('ready');
+          setStage('app');
         }} />
         <Toaster position="top-center" toastOptions={{ duration: 4000 }} />
       </>
@@ -334,7 +329,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <AppShell onSignOut={() => setStage('setup')} />
+      <AppShell onSetupNeeded={() => setStage('setup')} />
       <Toaster position="top-center" toastOptions={{ duration: 4000, style: { fontSize: '14px' } }} />
     </BrowserRouter>
   );

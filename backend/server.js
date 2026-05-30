@@ -9,8 +9,9 @@ const fs = require('fs');
 const emailRoutes = require('./routes/email.routes');
 const templateRoutes = require('./routes/template.routes');
 const configRoutes = require('./routes/config.routes');
+const adminRoutes = require('./routes/admin.routes');
 const { errorHandler } = require('./middleware/errorHandler');
-const { authMiddleware, loginHandler, checkHandler } = require('./middleware/auth');
+const { authMiddleware, loginHandler, checkHandler, logoutHandler } = require('./middleware/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -49,14 +50,16 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Auth endpoints (no token required)
+// Auth endpoints (public)
 app.post('/api/auth/login', loginHandler);
 app.get('/api/auth/check', checkHandler);
+app.post('/api/auth/logout', logoutHandler);
 
 // Protect all other API routes
 app.use('/api', authMiddleware);
 
 // Routes
+app.use('/api/admin', adminRoutes);
 app.use('/api/config', configRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api', emailRoutes);

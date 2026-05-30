@@ -16,15 +16,29 @@ export const checkAuth = () => axios.get('/api/auth/check', {
   headers: { 'x-app-token': sessionStorage.getItem(TOKEN_KEY) || '' }
 }).then(r => r.data);
 
-export const login = (password) =>
-  axios.post('/api/auth/login', { password }).then(r => {
+export const login = (code) =>
+  axios.post('/api/auth/login', { code }).then(r => {
     if (r.data.success && r.data.token) {
       sessionStorage.setItem(TOKEN_KEY, r.data.token);
+      sessionStorage.setItem('bmp_role', r.data.role);
     }
     return r.data;
   });
 
-export const logout = () => sessionStorage.removeItem(TOKEN_KEY);
+export const logout = () => {
+  const token = sessionStorage.getItem(TOKEN_KEY);
+  sessionStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem('bmp_role');
+  return axios.post('/api/auth/logout', {}, { headers: { 'x-app-token': token } }).catch(() => {});
+};
+
+export const getRole = () => sessionStorage.getItem('bmp_role');
+
+// ─── Admin ────────────────────────────────────────────────────────────────────
+export const adminListCodes = () => api.get('/admin/codes').then(r => r.data);
+export const adminCreateCode = (data) => api.post('/admin/codes', data).then(r => r.data);
+export const adminRevokeCode = (code) => api.patch(`/admin/codes/${code}/revoke`).then(r => r.data);
+export const adminDeleteCode = (code) => api.delete(`/admin/codes/${code}`).then(r => r.data);
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 export const getConfig = () => api.get('/config').then(r => r.data);
