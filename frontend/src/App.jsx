@@ -1,19 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import {
   HomeIcon, PaperAirplaneIcon, DocumentTextIcon, Cog6ToothIcon,
-  EnvelopeIcon, Bars3Icon, XMarkIcon, LockClosedIcon
+  EnvelopeIcon, Bars3Icon, XMarkIcon, LockClosedIcon, CheckCircleIcon
 } from '@heroicons/react/24/outline';
 
 import Dashboard from './pages/Dashboard';
 import Compose from './pages/Compose';
 import Templates from './pages/Templates';
 import Settings from './pages/Settings';
-import { checkAuth, login } from './services/api';
+import SenderConfig from './components/SenderConfig';
+import { checkAuth, login, getConfig } from './services/api';
 
 const DISCLAIMER_KEY = 'bmp_disclaimer_accepted';
 
+// ─── Password gate ─────────────────────────────────────────────────────────────
 function PasswordGate({ onUnlocked }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -25,11 +28,8 @@ function PasswordGate({ onUnlocked }) {
     setLoading(true);
     try {
       const res = await login(password);
-      if (res.success) {
-        onUnlocked();
-      } else {
-        setError('Incorrect password.');
-      }
+      if (res.success) onUnlocked();
+      else setError('Incorrect password.');
     } catch {
       setError('Incorrect password.');
     }
@@ -69,6 +69,59 @@ function PasswordGate({ onUnlocked }) {
   );
 }
 
+// ─── Mandatory email setup screen ─────────────────────────────────────────────
+function SetupRequired({ onConfigured }) {
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-lg">
+        {/* Header */}
+        <div className="text-center mb-6">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <EnvelopeIcon className="h-7 w-7 text-blue-500" />
+            <span className="text-2xl font-bold text-gray-900">BulkMailer Pro</span>
+          </div>
+          <p className="text-gray-500 text-sm">One-time setup required before you can send emails</p>
+        </div>
+
+        {/* Steps overview */}
+        <div className="flex items-center justify-center gap-4 mb-6 text-xs text-gray-500">
+          <div className="flex items-center gap-1.5">
+            <div className="w-5 h-5 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold">1</div>
+            <span className="font-medium text-blue-600">Set up email</span>
+          </div>
+          <div className="h-px w-8 bg-gray-300" />
+          <div className="flex items-center gap-1.5">
+            <div className="w-5 h-5 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center text-xs font-bold">2</div>
+            <span>Create templates</span>
+          </div>
+          <div className="h-px w-8 bg-gray-300" />
+          <div className="flex items-center gap-1.5">
+            <div className="w-5 h-5 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center text-xs font-bold">3</div>
+            <span>Send emails</span>
+          </div>
+        </div>
+
+        {/* Config card */}
+        <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+          <h2 className="font-semibold text-gray-800 mb-1">Connect Your Email Account</h2>
+          <p className="text-sm text-gray-500 mb-5">
+            Enter your own Gmail (or other SMTP) credentials. This app never uses a shared or default email —
+            every email you send will come from your own account.
+          </p>
+
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-5 text-xs text-amber-700">
+            <strong>Gmail users:</strong> You must use an <strong>App Password</strong>, not your regular Gmail password.
+            Enable 2-Step Verification first, then generate an App Password at myaccount.google.com → Security → App Passwords.
+          </div>
+
+          <SenderConfig initialConfig={{}} onSaved={onConfigured} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Disclaimer modal ──────────────────────────────────────────────────────────
 function DisclaimerModal({ onAccept }) {
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
@@ -86,14 +139,14 @@ function DisclaimerModal({ onAccept }) {
           </p>
         </div>
         <ul className="text-sm text-gray-600 space-y-1 mb-5">
-          <li>✅ Legitimate outreach to opted-in recipients</li>
+          <li>✅ Emails are sent from YOUR own account only</li>
           <li>✅ Gmail App Passwords — not your regular password</li>
-          <li>✅ Automated rate limiting to protect your account</li>
+          <li>✅ Automated rate limiting protects your account</li>
           <li>❌ Spam or unsolicited bulk email is prohibited</li>
         </ul>
         <button
           onClick={onAccept}
-          className="w-full bg-blue-500 text-white font-semibold py-3 rounded-lg hover:bg-blue-600 transition-colors text-sm sm:text-base"
+          className="w-full bg-blue-500 text-white font-semibold py-3 rounded-lg hover:bg-blue-600 transition-colors text-sm"
         >
           I Understand — Continue
         </button>
@@ -102,6 +155,7 @@ function DisclaimerModal({ onAccept }) {
   );
 }
 
+// ─── Sidebar ───────────────────────────────────────────────────────────────────
 const navItems = [
   { to: '/', label: 'Dashboard', Icon: HomeIcon, exact: true },
   { to: '/compose', label: 'Compose', Icon: PaperAirplaneIcon },
@@ -112,20 +166,11 @@ const navItems = [
 function Sidebar({ open, onClose }) {
   return (
     <>
-      {/* Mobile overlay backdrop */}
-      {open && (
-        <div
-          className="fixed inset-0 bg-black/50 z-30 md:hidden"
-          onClick={onClose}
-        />
-      )}
-
-      {/* Sidebar panel */}
+      {open && <div className="fixed inset-0 bg-black/50 z-30 md:hidden" onClick={onClose} />}
       <aside className={`
         fixed left-0 top-0 bottom-0 z-40 w-64 bg-[#1e293b] flex flex-col
         transition-transform duration-300 ease-in-out
-        ${open ? 'translate-x-0' : '-translate-x-full'}
-        md:translate-x-0
+        ${open ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0
       `}>
         <div className="p-5 border-b border-slate-700 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -136,7 +181,6 @@ function Sidebar({ open, onClose }) {
             <XMarkIcon className="h-5 w-5" />
           </button>
         </div>
-
         <nav className="flex-1 py-4 px-3">
           {navItems.map(({ to, label, Icon, exact }) => (
             <NavLink
@@ -146,9 +190,7 @@ function Sidebar({ open, onClose }) {
               onClick={onClose}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-blue-500 text-white'
-                    : 'text-slate-300 hover:bg-slate-700 hover:text-white'
+                  isActive ? 'bg-blue-500 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'
                 }`
               }
             >
@@ -157,7 +199,6 @@ function Sidebar({ open, onClose }) {
             </NavLink>
           ))}
         </nav>
-
         <div className="p-4 border-t border-slate-700">
           <p className="text-slate-500 text-xs text-center">v1.0.0 · Gmail safe cap: 400/day</p>
         </div>
@@ -178,7 +219,6 @@ function MobileTopBar({ onMenuOpen }) {
   );
 }
 
-/* Bottom nav for mobile */
 function MobileBottomNav() {
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-gray-200 flex">
@@ -201,28 +241,69 @@ function MobileBottomNav() {
   );
 }
 
-export default function App() {
-  const [showDisclaimer, setShowDisclaimer] = useState(false);
+// ─── Main app shell ────────────────────────────────────────────────────────────
+function AppShell({ onSignOut }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [authState, setAuthState] = useState('checking'); // 'checking' | 'locked' | 'unlocked'
+  const [showDisclaimer, setShowDisclaimer] = useState(!localStorage.getItem(DISCLAIMER_KEY));
 
-  useEffect(() => {
-    checkAuth().then(res => {
-      if (!res.passwordRequired || res.authenticated) {
-        setAuthState('unlocked');
-        if (!localStorage.getItem(DISCLAIMER_KEY)) setShowDisclaimer(true);
-      } else {
-        setAuthState('locked');
+  return (
+    <>
+      {showDisclaimer && (
+        <DisclaimerModal onAccept={() => {
+          localStorage.setItem(DISCLAIMER_KEY, 'true');
+          setShowDisclaimer(false);
+        }} />
+      )}
+      <div className="flex min-h-screen bg-gray-50">
+        <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <div className="flex-1 flex flex-col md:ml-64 min-w-0">
+          <MobileTopBar onMenuOpen={() => setSidebarOpen(true)} />
+          <main className="flex-1 overflow-auto pb-16 md:pb-0">
+            <div className="max-w-5xl mx-auto p-4 sm:p-6 md:p-8">
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/compose" element={<Compose />} />
+                <Route path="/templates" element={<Templates />} />
+                <Route path="/settings" element={<Settings onConfigCleared={onSignOut} />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </div>
+          </main>
+        </div>
+        <MobileBottomNav />
+      </div>
+    </>
+  );
+}
+
+// ─── Root ──────────────────────────────────────────────────────────────────────
+export default function App() {
+  // 'checking' | 'locked' | 'setup' | 'ready'
+  const [stage, setStage] = useState('checking');
+
+  async function checkStage() {
+    try {
+      // 1. Check password gate
+      const auth = await checkAuth();
+      if (auth.passwordRequired && !auth.authenticated) {
+        setStage('locked');
+        return;
       }
-    }).catch(() => setAuthState('unlocked'));
-  }, []);
-
-  function handleUnlocked() {
-    setAuthState('unlocked');
-    if (!localStorage.getItem(DISCLAIMER_KEY)) setShowDisclaimer(true);
+      // 2. Check if email has been configured
+      const cfg = await getConfig();
+      if (!cfg.data?.email) {
+        setStage('setup');
+      } else {
+        setStage('ready');
+      }
+    } catch {
+      setStage('setup'); // default to setup if API unreachable
+    }
   }
 
-  if (authState === 'checking') {
+  useEffect(() => { checkStage(); }, []);
+
+  if (stage === 'checking') {
     return (
       <div className="min-h-screen bg-[#1e293b] flex items-center justify-center">
         <div className="h-8 w-8 border-4 border-blue-400 border-t-transparent rounded-full animate-spin" />
@@ -230,45 +311,31 @@ export default function App() {
     );
   }
 
-  if (authState === 'locked') {
-    return <PasswordGate onUnlocked={handleUnlocked} />;
+  if (stage === 'locked') {
+    return (
+      <>
+        <PasswordGate onUnlocked={checkStage} />
+        <Toaster position="top-center" toastOptions={{ duration: 4000 }} />
+      </>
+    );
+  }
+
+  if (stage === 'setup') {
+    return (
+      <>
+        <SetupRequired onConfigured={() => {
+          toast.success('Email configured! Welcome to BulkMailer Pro.');
+          setStage('ready');
+        }} />
+        <Toaster position="top-center" toastOptions={{ duration: 4000 }} />
+      </>
+    );
   }
 
   return (
     <BrowserRouter>
-      {showDisclaimer && (
-        <DisclaimerModal onAccept={() => {
-          localStorage.setItem(DISCLAIMER_KEY, 'true');
-          setShowDisclaimer(false);
-        }} />
-      )}
-
-      <div className="flex min-h-screen bg-gray-50">
-        <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-
-        <div className="flex-1 flex flex-col md:ml-64 min-w-0">
-          <MobileTopBar onMenuOpen={() => setSidebarOpen(true)} />
-
-          <main className="flex-1 overflow-auto pb-16 md:pb-0">
-            <div className="max-w-5xl mx-auto p-4 sm:p-6 md:p-8">
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/compose" element={<Compose />} />
-                <Route path="/templates" element={<Templates />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </div>
-          </main>
-        </div>
-
-        <MobileBottomNav />
-      </div>
-
-      <Toaster
-        position="top-center"
-        toastOptions={{ duration: 4000, style: { fontSize: '14px' } }}
-      />
+      <AppShell onSignOut={() => setStage('setup')} />
+      <Toaster position="top-center" toastOptions={{ duration: 4000, style: { fontSize: '14px' } }} />
     </BrowserRouter>
   );
 }

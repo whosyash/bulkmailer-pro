@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { getConfig, getLimits, updateLimits, resetLimits } from '../services/api';
+import { ArrowRightStartOnRectangleIcon } from '@heroicons/react/24/outline';
+import { getConfig, getLimits, updateLimits, resetLimits, saveConfig } from '../services/api';
 import SenderConfig from '../components/SenderConfig';
 
-export default function Settings() {
+export default function Settings({ onConfigCleared }) {
   const [savedConfig, setSavedConfig] = useState(null);
   const [limitInfo, setLimitInfo] = useState(null);
   const [customLimit, setCustomLimit] = useState('');
   const [updatingLimit, setUpdatingLimit] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [confirmClear, setConfirmClear] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -16,6 +18,15 @@ export default function Settings() {
       getLimits().then(r => { if (r.success) setLimitInfo(r.data); }).catch(() => {})
     ]).finally(() => setLoading(false));
   }, []);
+
+  async function handleClearConfig() {
+    try {
+      // Save empty config to force setup screen on next load
+      await saveConfig({ email: '', appPassword: ' ', senderName: '', smtpHost: 'smtp.gmail.com', smtpPort: 587, encryption: 'TLS' });
+    } catch {}
+    toast('Email account removed. Please set up a new account.');
+    onConfigCleared?.();
+  }
 
   async function handleSaved() {
     // Refresh config + limits after save
@@ -65,7 +76,34 @@ export default function Settings() {
 
       {/* Sender Config */}
       <section className="bg-white border border-gray-200 rounded-xl p-6 mb-6">
-        <h2 className="font-semibold text-gray-800 mb-5">Sender Configuration</h2>
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h2 className="font-semibold text-gray-800">Sender Configuration</h2>
+            {savedConfig?.email && (
+              <p className="text-xs text-green-600 mt-0.5">✅ Connected: {savedConfig.email}</p>
+            )}
+          </div>
+          {savedConfig?.email && (
+            !confirmClear ? (
+              <button
+                onClick={() => setConfirmClear(true)}
+                className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 border border-red-200 rounded-lg px-3 py-1.5 hover:bg-red-50"
+              >
+                <ArrowRightStartOnRectangleIcon className="h-4 w-4" />
+                Change Account
+              </button>
+            ) : (
+              <div className="flex gap-2">
+                <button onClick={handleClearConfig} className="text-xs bg-red-500 text-white px-3 py-1.5 rounded-lg hover:bg-red-600">
+                  Confirm
+                </button>
+                <button onClick={() => setConfirmClear(false)} className="text-xs border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50">
+                  Cancel
+                </button>
+              </div>
+            )
+          )}
+        </div>
         {loading ? (
           <p className="text-sm text-gray-400">Loading…</p>
         ) : (
