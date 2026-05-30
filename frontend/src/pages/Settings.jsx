@@ -82,7 +82,7 @@ export default function Settings() {
 
         {limitInfo ? (
           <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-3 text-center">
+            <div className="grid grid-cols-3 gap-2 text-center">
               <div className="bg-gray-50 rounded-lg p-3">
                 <p className="text-lg font-bold text-gray-700">{limitInfo.sentToday}</p>
                 <p className="text-xs text-gray-500">Sent today</p>

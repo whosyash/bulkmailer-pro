@@ -21,26 +21,43 @@ const STEPS = [
 
 function StepIndicator({ current }) {
   return (
-    <div className="flex items-center mb-8">
-      {STEPS.map((step, i) => (
-        <React.Fragment key={step.id}>
-          <div className="flex flex-col items-center">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold border-2 transition-colors ${
-              step.id < current ? 'bg-green-500 border-green-500 text-white' :
-              step.id === current ? 'bg-blue-500 border-blue-500 text-white' :
-              'bg-white border-gray-300 text-gray-400'
-            }`}>
-              {step.id < current ? '✓' : step.id}
+    <div className="mb-6">
+      {/* Mobile: simple text indicator */}
+      <div className="sm:hidden flex items-center justify-between mb-1">
+        <span className="text-sm font-semibold text-blue-600">
+          Step {current} of {STEPS.length}: {STEPS[current - 1]?.label}
+        </span>
+        <span className="text-xs text-gray-400">{Math.round(((current - 1) / (STEPS.length - 1)) * 100)}%</span>
+      </div>
+      <div className="sm:hidden w-full h-1.5 bg-gray-200 rounded-full">
+        <div
+          className="h-full bg-blue-500 rounded-full transition-all duration-500"
+          style={{ width: `${((current - 1) / (STEPS.length - 1)) * 100}%` }}
+        />
+      </div>
+
+      {/* Desktop: full step row */}
+      <div className="hidden sm:flex items-center">
+        {STEPS.map((step, i) => (
+          <React.Fragment key={step.id}>
+            <div className="flex flex-col items-center">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold border-2 transition-colors ${
+                step.id < current ? 'bg-green-500 border-green-500 text-white' :
+                step.id === current ? 'bg-blue-500 border-blue-500 text-white' :
+                'bg-white border-gray-300 text-gray-400'
+              }`}>
+                {step.id < current ? '✓' : step.id}
+              </div>
+              <span className={`text-xs mt-1 font-medium ${step.id === current ? 'text-blue-600' : 'text-gray-400'}`}>
+                {step.label}
+              </span>
             </div>
-            <span className={`text-xs mt-1 font-medium ${step.id === current ? 'text-blue-600' : 'text-gray-400'}`}>
-              {step.label}
-            </span>
-          </div>
-          {i < STEPS.length - 1 && (
-            <div className={`flex-1 h-0.5 mx-2 mb-5 ${step.id < current ? 'bg-green-400' : 'bg-gray-200'}`} />
-          )}
-        </React.Fragment>
-      ))}
+            {i < STEPS.length - 1 && (
+              <div className={`flex-1 h-0.5 mx-2 mb-5 ${step.id < current ? 'bg-green-400' : 'bg-gray-200'}`} />
+            )}
+          </React.Fragment>
+        ))}
+      </div>
     </div>
   );
 }
@@ -174,7 +191,8 @@ export default function Compose() {
       setCountdown(null);
       setStep(4);
 
-      // Open SSE stream
+      // Open SSE stream — each event name maps directly to handleSSEEvent;
+      // do NOT add `any: handleSSEEvent` or every event fires the handler twice.
       esRef.current = openSendStream(sid, {
         connected: () => {},
         progress: handleSSEEvent,
@@ -184,7 +202,6 @@ export default function Compose() {
         cancelled: handleSSEEvent,
         limit_reached: handleSSEEvent,
         error: handleSSEEvent,
-        any: handleSSEEvent,
         streamError: () => {
           toast.error('Lost connection to send stream. Use the status tab to check progress.');
         }
@@ -404,7 +421,7 @@ export default function Compose() {
           </div>
 
           {progress && (
-            <div className="grid grid-cols-4 gap-3 text-center mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center mb-6">
               {[
                 { label: 'Sent', value: progress.sent, color: 'text-green-600', bg: 'bg-green-50' },
                 { label: 'Failed', value: progress.failed, color: 'text-red-600', bg: 'bg-red-50' },

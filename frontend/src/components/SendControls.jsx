@@ -89,7 +89,7 @@ export default function SendControls({ parsedData, templates, onStart, configSav
         {loadingLimits ? (
           <p className="text-sm text-gray-400">Loading daily limit info...</p>
         ) : limitInfo ? (
-          <div className="grid grid-cols-3 gap-4 mb-4 text-center">
+          <div className="grid grid-cols-3 gap-2 mb-4 text-center">
             <div className="bg-blue-50 rounded-lg p-3">
               <p className="text-2xl font-bold text-blue-600">{validCount}</p>
               <p className="text-xs text-blue-500">Valid recipients</p>

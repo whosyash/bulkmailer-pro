@@ -92,7 +92,7 @@ export default function ProgressBar({
       </div>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-4 gap-3 text-center">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
         {[
           { label: 'Sent', value: sent, color: 'text-green-600', bg: 'bg-green-50' },
           { label: 'Failed', value: failed, color: 'text-red-600', bg: 'bg-red-50' },
@@ -107,7 +107,7 @@ export default function ProgressBar({
       </div>
 
       {/* Current email + ETA */}
-      <div className="grid grid-cols-3 gap-3 text-sm text-gray-500">
+      <div className="grid grid-cols-3 gap-2 text-sm text-gray-500">
         {currentEmail && (
           <div className="col-span-3 bg-gray-50 rounded-lg px-3 py-2">
             <span className="text-xs text-gray-400 mr-2">Current:</span>

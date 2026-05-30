@@ -50,7 +50,7 @@ export default function Dashboard() {
       </div>
 
       {/* Today stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         <StatCard label="Sent Today" value={totalSentToday} color="green" />
         <StatCard
           label="Remaining Today"
@@ -63,19 +63,19 @@ export default function Dashboard() {
       </div>
 
       {/* Quick actions */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
         {[
           { to: '/compose', icon: PaperAirplaneIcon, label: 'New Campaign', desc: 'Upload recipients & send' },
-          { to: '/templates', icon: DocumentTextIcon, label: 'Templates', desc: 'Create & manage email templates' },
+          { to: '/templates', icon: DocumentTextIcon, label: 'Templates', desc: 'Create & manage templates' },
           { to: '/settings', icon: Cog6ToothIcon, label: 'Settings', desc: 'Configure sender & limits' }
         ].map(({ to, icon: Icon, label, desc }) => (
           <Link
             key={to}
             to={to}
-            className="flex items-center gap-4 bg-white border border-gray-200 rounded-xl p-5 hover:border-blue-300 hover:shadow-sm transition-all"
+            className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl p-4 hover:border-blue-300 hover:shadow-sm transition-all"
           >
-            <div className="bg-blue-50 rounded-lg p-2.5">
-              <Icon className="h-6 w-6 text-blue-500" />
+            <div className="bg-blue-50 rounded-lg p-2.5 flex-shrink-0">
+              <Icon className="h-5 w-5 text-blue-500" />
             </div>
             <div>
               <p className="font-semibold text-gray-800 text-sm">{label}</p>
