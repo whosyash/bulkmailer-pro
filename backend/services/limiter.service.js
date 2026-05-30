@@ -1,8 +1,9 @@
 const fs = require('fs');
 const path = require('path');
 
-const LOG_PATH = path.join(__dirname, '../data/sendLog.json');
-const CONFIG_PATH = path.join(__dirname, '../data/config.json');
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '../data');
+const LOG_PATH = path.join(DATA_DIR, 'sendLog.json');
+const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
 
 const DAILY_LIMITS = {
   'gmail.com': 400,

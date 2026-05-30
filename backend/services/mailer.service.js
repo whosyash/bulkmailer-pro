@@ -5,7 +5,8 @@ const fs = require('fs');
 const path = require('path');
 const { incrementSent, getLimitInfo } = require('./limiter.service');
 
-const LOG_PATH = path.join(__dirname, '../data/sendLog.json');
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '../data');
+const LOG_PATH = path.join(DATA_DIR, 'sendLog.json');
 
 // In-memory registry of active send sessions
 const activeSessions = new Map();

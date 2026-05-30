@@ -1,6 +1,30 @@
 import axios from 'axios';
 
+const TOKEN_KEY = 'bmp_token';
+
 const api = axios.create({ baseURL: '/api', timeout: 30000 });
+
+// Attach stored token to every request
+api.interceptors.request.use(cfg => {
+  const token = sessionStorage.getItem(TOKEN_KEY);
+  if (token) cfg.headers['x-app-token'] = token;
+  return cfg;
+});
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+export const checkAuth = () => axios.get('/api/auth/check', {
+  headers: { 'x-app-token': sessionStorage.getItem(TOKEN_KEY) || '' }
+}).then(r => r.data);
+
+export const login = (password) =>
+  axios.post('/api/auth/login', { password }).then(r => {
+    if (r.data.success && r.data.token) {
+      sessionStorage.setItem(TOKEN_KEY, r.data.token);
+    }
+    return r.data;
+  });
+
+export const logout = () => sessionStorage.removeItem(TOKEN_KEY);
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 export const getConfig = () => api.get('/config').then(r => r.data);
@@ -31,17 +55,13 @@ export const getSendReport = (id) => api.get(`/send/report/${id}`).then(r => r.d
 export const getSendHistory = () => api.get('/send/history').then(r => r.data);
 export const checkSpam = (subject) => api.get('/send/spam-check', { params: { subject } }).then(r => r.data);
 
-/**
- * Open an SSE stream for a send session.
- * Returns the EventSource instance; caller is responsible for closing it.
- */
 export function openSendStream(sessionId, handlers) {
-  const es = new EventSource(`/api/send/stream/${sessionId}`);
+  const token = sessionStorage.getItem(TOKEN_KEY) || '';
+  const es = new EventSource(`/api/send/stream/${sessionId}?token=${token}`);
   es.onmessage = (e) => {
     try {
       const data = JSON.parse(e.data);
       handlers[data.event]?.(data);
-      handlers.any?.(data);
     } catch {}
   };
   es.onerror = () => handlers.streamError?.();

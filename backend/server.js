@@ -10,13 +10,14 @@ const emailRoutes = require('./routes/email.routes');
 const templateRoutes = require('./routes/template.routes');
 const configRoutes = require('./routes/config.routes');
 const { errorHandler } = require('./middleware/errorHandler');
+const { authMiddleware, loginHandler, checkHandler } = require('./middleware/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Ensure data directory and files exist on startup
-const dataDir = path.join(__dirname, 'data');
-const uploadsDir = path.join(__dirname, 'uploads');
+// DATA_DIR env var lets Railway volume override the default path
+const dataDir = process.env.DATA_DIR || path.join(__dirname, 'data');
+const uploadsDir = process.env.UPLOADS_DIR || path.join(__dirname, 'uploads');
 
 [dataDir, uploadsDir].forEach(dir => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -48,12 +49,19 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// Auth endpoints (no token required)
+app.post('/api/auth/login', loginHandler);
+app.get('/api/auth/check', checkHandler);
+
+// Protect all other API routes
+app.use('/api', authMiddleware);
+
 // Routes
 app.use('/api/config', configRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api', emailRoutes);
 
-// Health check
+// Health check (public)
 app.get('/api/health', (_req, res) => {
   res.json({ success: true, message: 'BulkMailer Pro API is running', timestamp: new Date().toISOString() });
 });

@@ -1,17 +1,73 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, NavLink, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import {
   HomeIcon, PaperAirplaneIcon, DocumentTextIcon, Cog6ToothIcon,
-  EnvelopeIcon, Bars3Icon, XMarkIcon
+  EnvelopeIcon, Bars3Icon, XMarkIcon, LockClosedIcon
 } from '@heroicons/react/24/outline';
 
 import Dashboard from './pages/Dashboard';
 import Compose from './pages/Compose';
 import Templates from './pages/Templates';
 import Settings from './pages/Settings';
+import { checkAuth, login } from './services/api';
 
 const DISCLAIMER_KEY = 'bmp_disclaimer_accepted';
+
+function PasswordGate({ onUnlocked }) {
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      const res = await login(password);
+      if (res.success) {
+        onUnlocked();
+      } else {
+        setError('Incorrect password.');
+      }
+    } catch {
+      setError('Incorrect password.');
+    }
+    setLoading(false);
+  }
+
+  return (
+    <div className="min-h-screen bg-[#1e293b] flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8">
+        <div className="flex flex-col items-center mb-6">
+          <div className="bg-blue-50 rounded-full p-4 mb-3">
+            <LockClosedIcon className="h-8 w-8 text-blue-500" />
+          </div>
+          <h1 className="text-xl font-bold text-gray-900">BulkMailer Pro</h1>
+          <p className="text-sm text-gray-500 mt-1">Enter the access password to continue</p>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input
+            type="password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            placeholder="Access password"
+            className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            autoFocus
+          />
+          {error && <p className="text-red-500 text-sm">{error}</p>}
+          <button
+            type="submit"
+            disabled={loading || !password}
+            className="w-full bg-blue-500 text-white font-semibold py-3 rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors"
+          >
+            {loading ? 'Checking…' : 'Unlock'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 function DisclaimerModal({ onAccept }) {
   return (
@@ -148,12 +204,35 @@ function MobileBottomNav() {
 export default function App() {
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [authState, setAuthState] = useState('checking'); // 'checking' | 'locked' | 'unlocked'
 
   useEffect(() => {
-    if (!localStorage.getItem(DISCLAIMER_KEY)) {
-      setShowDisclaimer(true);
-    }
+    checkAuth().then(res => {
+      if (!res.passwordRequired || res.authenticated) {
+        setAuthState('unlocked');
+        if (!localStorage.getItem(DISCLAIMER_KEY)) setShowDisclaimer(true);
+      } else {
+        setAuthState('locked');
+      }
+    }).catch(() => setAuthState('unlocked'));
   }, []);
+
+  function handleUnlocked() {
+    setAuthState('unlocked');
+    if (!localStorage.getItem(DISCLAIMER_KEY)) setShowDisclaimer(true);
+  }
+
+  if (authState === 'checking') {
+    return (
+      <div className="min-h-screen bg-[#1e293b] flex items-center justify-center">
+        <div className="h-8 w-8 border-4 border-blue-400 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (authState === 'locked') {
+    return <PasswordGate onUnlocked={handleUnlocked} />;
+  }
 
   return (
     <BrowserRouter>

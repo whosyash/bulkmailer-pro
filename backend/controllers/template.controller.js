@@ -2,7 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 
-const TEMPLATES_PATH = path.join(__dirname, '../data/templates.json');
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '../data');
+const TEMPLATES_PATH = path.join(DATA_DIR, 'templates.json');
 
 function readTemplates() {
   try {

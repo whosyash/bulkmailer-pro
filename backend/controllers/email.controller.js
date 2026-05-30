@@ -7,7 +7,8 @@ const {
 } = require('../services/mailer.service');
 const { getLimitInfo, updateCustomLimit, resetCustomLimit } = require('../services/limiter.service');
 
-const TEMPLATES_PATH = path.join(__dirname, '../data/templates.json');
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '../data');
+const TEMPLATES_PATH = path.join(DATA_DIR, 'templates.json');
 
 function readTemplates() {
   try { return JSON.parse(fs.readFileSync(TEMPLATES_PATH, 'utf8')); }

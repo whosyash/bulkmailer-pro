@@ -2,7 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const { verifyConnection } = require('../services/mailer.service');
 
-const CONFIG_PATH = path.join(__dirname, '../data/config.json');
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '../data');
+const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
 
 function readConfig() {
   try {
