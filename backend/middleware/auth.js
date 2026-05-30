@@ -9,8 +9,9 @@
 const fs = require('fs');
 const path = require('path');
 
-const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '../data');
-const CODES_PATH = () => path.join(DATA_DIR, 'access-codes.json');
+// access-codes.json lives at the root data dir, not in a client subdir
+const ROOT_DATA = process.env.DATA_DIR || path.join(__dirname, '../data');
+const CODES_PATH = () => path.join(ROOT_DATA, 'access-codes.json');
 
 const sessions = new Map(); // token → { role: 'admin'|'client', code }
 

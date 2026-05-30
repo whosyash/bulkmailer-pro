@@ -12,6 +12,7 @@ const configRoutes = require('./routes/config.routes');
 const adminRoutes = require('./routes/admin.routes');
 const { errorHandler } = require('./middleware/errorHandler');
 const { authMiddleware, loginHandler, checkHandler, logoutHandler } = require('./middleware/auth');
+const { setDataDir } = require('./middleware/setDataDir');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -24,18 +25,10 @@ const uploadsDir = process.env.UPLOADS_DIR || path.join(__dirname, 'uploads');
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
-const defaultDataFiles = {
-  'templates.json': [],
-  'sendLog.json': { emailCounts: {}, sessions: [] },
-  'config.json': {}
-};
-
-Object.entries(defaultDataFiles).forEach(([file, defaultVal]) => {
-  const filePath = path.join(dataDir, file);
-  if (!fs.existsSync(filePath)) {
-    fs.writeFileSync(filePath, JSON.stringify(defaultVal, null, 2));
-  }
-});
+// Per-client data files are created on first login by setDataDir middleware.
+// access-codes.json lives at the root data dir — ensure it exists here.
+const codesFile = path.join(dataDir, 'access-codes.json');
+if (!fs.existsSync(codesFile)) fs.writeFileSync(codesFile, '[]');
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -57,6 +50,8 @@ app.post('/api/auth/logout', logoutHandler);
 
 // Protect all other API routes
 app.use('/api', authMiddleware);
+// Resolve per-client data directory (must run after authMiddleware sets req.sessionCode)
+app.use('/api', setDataDir);
 
 // Routes
 app.use('/api/admin', adminRoutes);
